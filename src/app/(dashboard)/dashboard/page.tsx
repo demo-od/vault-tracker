@@ -2,8 +2,31 @@ import { getTransactions, getDashboardSummary, deleteTransaction } from '@/app/a
 import { AddTransactionModal } from '@/components/add-transaction-modal';
 import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { DeleteButton } from '@/components/delete-button';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { db } from '@/db';
+import { user } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { formatCurrency } from '@/lib/currency';
 
 export default async function DashboardPage() {
+    const session = await auth.api.getSession({
+        headers: await headers(),
+    });
+
+    // Fetch user currency preference
+    let userCurrency = 'USD';
+    if (session) {
+        const users = await db
+            .select({
+                currency: user.currency,
+            })
+            .from(user)
+            .where(eq(user.id, session.user.id))
+            .limit(1);
+        userCurrency = users[0]?.currency || 'USD';
+    }
+
     const [txRes, summaryRes] = await Promise.all([
         getTransactions(),
         getDashboardSummary(),
@@ -26,7 +49,7 @@ export default async function DashboardPage() {
                         Summary of your balance, income, and recent cashflow.
                     </p>
                 </div>
-                <AddTransactionModal />
+                <AddTransactionModal currency={userCurrency} />
             </div>
 
             {/* Metric Summary Cards */}
@@ -39,7 +62,7 @@ export default async function DashboardPage() {
                         <Wallet className="w-4 h-4 text-neutral-400" />
                     </div>
                     <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                        ${summary.netBalance.toFixed(2)}
+                        {formatCurrency(summary.netBalance, userCurrency)}
                     </p>
                 </div>
 
@@ -51,7 +74,7 @@ export default async function DashboardPage() {
                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                     </div>
                     <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                        +${summary.totalIncome.toFixed(2)}
+                        +{formatCurrency(summary.totalIncome, userCurrency)}
                     </p>
                 </div>
 
@@ -63,7 +86,7 @@ export default async function DashboardPage() {
                         <TrendingDown className="w-4 h-4 text-rose-500" />
                     </div>
                     <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-                        -${summary.totalExpenses.toFixed(2)}
+                        -{formatCurrency(summary.totalExpenses, userCurrency)}
                     </p>
                 </div>
             </div>
@@ -109,8 +132,8 @@ export default async function DashboardPage() {
                                                     : 'text-emerald-600 dark:text-emerald-400'
                                             }`}
                                         >
-                                            {isExpense ? '-' : '+'}$
-                                            {Math.abs(Number(tx.amount)).toFixed(2)}
+                                            {isExpense ? '-' : '+'}
+                                            {formatCurrency(Math.abs(Number(tx.amount)), userCurrency)}
                                         </span>
 
                                         <form

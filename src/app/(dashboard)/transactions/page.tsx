@@ -2,6 +2,12 @@ import { getCategories, getTransactions, deleteTransaction } from '@/app/actions
 import { AddTransactionModal } from '@/components/add-transaction-modal';
 import { DeleteButton } from '@/components/delete-button';
 import { TransactionsFilter } from '@/components/transactions-filter';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { db } from '@/db';
+import { user } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { formatCurrency } from '@/lib/currency';
 
 export default async function TransactionsPage({
                                                    searchParams,
@@ -11,6 +17,23 @@ export default async function TransactionsPage({
     const params = await searchParams;
     const query = params.q?.toLowerCase() || '';
     const selectedCategory = params.category || 'all';
+
+    const session = await auth.api.getSession({
+        headers: await headers(),
+    });
+
+    // Fetch user currency preference
+    let userCurrency = 'USD';
+    if (session) {
+        const users = await db
+            .select({
+                currency: user.currency,
+            })
+            .from(user)
+            .where(eq(user.id, session.user.id))
+            .limit(1);
+        userCurrency = users[0]?.currency || 'USD';
+    }
 
     const [txRes, catRes] = await Promise.all([
         getTransactions(),
@@ -45,7 +68,7 @@ export default async function TransactionsPage({
                         View, search, filter, and manage all your income and expenses.
                     </p>
                 </div>
-                <AddTransactionModal />
+                <AddTransactionModal currency={userCurrency} />
             </div>
 
             {/* Filter Bar */}
@@ -98,8 +121,8 @@ export default async function TransactionsPage({
                                                     : 'text-emerald-600 dark:text-emerald-400'
                                             }`}
                                         >
-                                            {isExpense ? '-' : '+'}$
-                                            {Math.abs(Number(tx.amount)).toFixed(2)}
+                                            {isExpense ? '-' : '+'}
+                                            {formatCurrency(Math.abs(Number(tx.amount)), userCurrency)}
                                         </span>
 
                                         <form

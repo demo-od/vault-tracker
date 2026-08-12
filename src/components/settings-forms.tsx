@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { updateProfileName, deleteAccount } from '@/app/actions/settings';
-import { User, Lock, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { updateProfileName, deleteAccount, updateCurrency } from '@/app/actions/settings';
+import { User, Lock, Trash2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
+import { detectUserCurrency, SUPPORTED_CURRENCIES } from '@/lib/currency';
 
 interface SettingsFormsProps {
     user: {
         id: string;
         name: string;
         email: string;
+        currency?: string;
     };
 }
 
@@ -23,8 +25,20 @@ export function SettingsForms({ user }: SettingsFormsProps) {
     const [isUpdatingName, setIsUpdatingName] = useState(false);
     const [nameMessage, setNameMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+    const [currency, setCurrency] = useState(user.currency || 'USD');
+    const [isUpdatingCurrency, setIsUpdatingCurrency] = useState(false);
+    const [currencyMessage, setCurrencyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // Auto-detect currency on mount if user doesn't have one set
+    useEffect(() => {
+        if (!user.currency) {
+            const detected = detectUserCurrency();
+            setCurrency(detected);
+        }
+    }, [user.currency]);
 
     async function handleNameSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -38,6 +52,21 @@ export function SettingsForms({ user }: SettingsFormsProps) {
             setNameMessage({ type: 'success', text: 'Name updated successfully!' });
         } else {
             setNameMessage({ type: 'error', text: res.error || 'Failed to update name' });
+        }
+    }
+
+    async function handleCurrencySubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setIsUpdatingCurrency(true);
+        setCurrencyMessage(null);
+
+        const res = await updateCurrency(currency);
+        setIsUpdatingCurrency(false);
+
+        if (res.success) {
+            setCurrencyMessage({ type: 'success', text: 'Currency updated successfully!' });
+        } else {
+            setCurrencyMessage({ type: 'error', text: res.error || 'Failed to update currency' });
         }
     }
 
@@ -125,6 +154,65 @@ export function SettingsForms({ user }: SettingsFormsProps) {
                             className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50 cursor-pointer"
                         >
                             {isUpdatingName ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {/* 💰 Currency Preferences */}
+            <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-3">
+                    <DollarSign className="w-5 h-5 text-neutral-500" />
+                    <h2 className="text-base font-bold text-neutral-900 dark:text-white">
+                        Currency Preferences
+                    </h2>
+                </div>
+
+                {currencyMessage && (
+                    <div
+                        className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+                            currencyMessage.type === 'success'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                        }`}
+                    >
+                        {currencyMessage.type === 'success' ? (
+                            <CheckCircle className="w-4 h-4 shrink-0" />
+                        ) : (
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                        )}
+                        <span>{currencyMessage.text}</span>
+                    </div>
+                )}
+
+                <form onSubmit={handleCurrencySubmit} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                            Display Currency
+                        </label>
+                        <select
+                            value={currency}
+                            onChange={(e) => setCurrency(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 rounded-lg text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
+                        >
+                            {SUPPORTED_CURRENCIES.map((curr) => (
+                                <option key={curr.code} value={curr.code}>
+                                    {curr.code} - {curr.name} ({curr.symbol})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-neutral-400">
+                            This currency will be used throughout the application for displaying amounts.
+                        </p>
+                    </div>
+
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={isUpdatingCurrency}
+                            className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50 cursor-pointer"
+                        >
+                            {isUpdatingCurrency ? 'Saving...' : 'Save Currency'}
                         </button>
                     </div>
                 </form>

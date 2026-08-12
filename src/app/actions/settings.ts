@@ -42,6 +42,35 @@ export async function updateProfileName(firstName: string, lastName: string) {
 }
 
 /**
+ * Update User Currency
+ */
+export async function updateCurrency(currency: string) {
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
+
+        if (!session) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await db
+            .update(user)
+            .set({ currency, updatedAt: new Date() })
+            .where(eq(user.id, session.user.id));
+
+        revalidatePath('/settings');
+        revalidatePath('/dashboard');
+        revalidatePath('/transactions');
+        revalidatePath('/analytics');
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to update currency:', error);
+        return { success: false, error: 'Could not update currency' };
+    }
+}
+
+/**
  * Permanently Delete Account
  */
 export async function deleteAccount() {

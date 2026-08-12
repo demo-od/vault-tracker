@@ -14,6 +14,7 @@ import {
     Legend,
 } from 'recharts';
 import { Target, PiggyBank, Receipt, ShoppingBag } from 'lucide-react';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 
 interface BreakdownItem {
     name: string;
@@ -34,6 +35,7 @@ interface AnalyticsChartsProps {
     totalIncome: number;
     totalExpenses: number;
     transactionCount: number;
+    currency?: string;
 }
 
 export function AnalyticsCharts({
@@ -42,6 +44,7 @@ export function AnalyticsCharts({
                                     totalIncome,
                                     totalExpenses,
                                     transactionCount,
+                                    currency = 'USD',
                                 }: AnalyticsChartsProps) {
     const pieData =
         breakdown.length > 0
@@ -56,6 +59,8 @@ export function AnalyticsCharts({
         transactionCount > 0 ? (totalExpenses + totalIncome) / transactionCount : 0;
 
     const topCategory = breakdown.length > 0 ? breakdown[0] : null;
+
+    const currencySymbol = getCurrencySymbol(currency);
 
     return (
         <div className="space-y-6">
@@ -72,7 +77,7 @@ export function AnalyticsCharts({
                         {savingsRate}%
                     </p>
                     <p className="text-[11px] text-neutral-500">
-                        {savings >= 0 ? `+$${savings.toFixed(2)} saved` : 'Spending exceeds income'}
+                        {savings >= 0 ? `+${formatCurrency(savings, currency)} saved` : 'Spending exceeds income'}
                     </p>
                 </div>
 
@@ -88,7 +93,7 @@ export function AnalyticsCharts({
                     </p>
                     <p className="text-[11px] text-neutral-500">
                         {topCategory
-                            ? `$${topCategory.total.toFixed(2)} (${topCategory.percentage}% of expenses)`
+                            ? `${formatCurrency(topCategory.total, currency)} (${topCategory.percentage}% of expenses)`
                             : 'No expense recorded'}
                     </p>
                 </div>
@@ -101,7 +106,7 @@ export function AnalyticsCharts({
                         <Receipt className="w-4 h-4 text-neutral-400" />
                     </div>
                     <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                        ${avgTransactionSize.toFixed(2)}
+                        {formatCurrency(avgTransactionSize, currency)}
                     </p>
                     <p className="text-[11px] text-neutral-500">
                         Across {transactionCount} total entry(ies)
@@ -146,11 +151,11 @@ export function AnalyticsCharts({
                                     <YAxis
                                         stroke="#888888"
                                         fontSize={12}
-                                        tickFormatter={(v) => `$${v}`}
+                                        tickFormatter={(v) => `${currencySymbol}${v}`}
                                     />
                                     <Tooltip
                                         formatter={(value) => [
-                                            `$${Number(value || 0).toFixed(2)}`,
+                                            formatCurrency(Number(value || 0), currency),
                                         ]}
                                         contentStyle={{
                                             backgroundColor: '#171717',
@@ -192,7 +197,7 @@ export function AnalyticsCharts({
                                 </Pie>
                                 <Tooltip
                                     formatter={(value) => [
-                                        `$${Number(value || 0).toFixed(2)}`,
+                                        formatCurrency(Number(value || 0), currency),
                                         'Spent',
                                     ]}
                                     contentStyle={{
@@ -214,7 +219,7 @@ export function AnalyticsCharts({
                                     style={{ backgroundColor: cat.color }}
                                 />
                                 <span className="text-neutral-600 dark:text-neutral-400">
-                                    {cat.name} (${cat.total.toFixed(0)})
+                                    {cat.name} ({formatCurrency(cat.total, currency)})
                                 </span>
                             </div>
                         ))}

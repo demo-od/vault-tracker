@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Loader2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { createTransaction, getCategories } from '@/app/actions/transactions';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface Category {
     id: string;
@@ -10,7 +11,11 @@ interface Category {
     color?: string | null;
 }
 
-export function AddTransactionModal() {
+interface AddTransactionModalProps {
+    currency?: string;
+}
+
+export function AddTransactionModal({ currency = 'USD' }: AddTransactionModalProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -23,6 +28,8 @@ export function AddTransactionModal() {
     const [categoryId, setCategoryId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
+
+    const currencySymbol = getCurrencySymbol(currency);
 
     useEffect(() => {
         if (isOpen) {
@@ -143,7 +150,7 @@ export function AddTransactionModal() {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-                                        Amount ($)
+                                        Amount ({currencySymbol})
                                     </label>
                                     <input
                                         type="number"

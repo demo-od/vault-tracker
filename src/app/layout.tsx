@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
     title: 'Vault Expense Tracker',
     description: 'Production-grade monochrome expense tracker',
+    icons: {
+        icon: '/favicon.svg',
+    },
 };
 
 export default function RootLayout({
