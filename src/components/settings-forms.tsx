@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { updateProfileName, deleteAccount, updateCurrency } from '@/app/actions/settings';
-import { User, Lock, Trash2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
+import { User, Lock, Trash2, CheckCircle, AlertCircle, DollarSign, Sun, Moon } from 'lucide-react';
 import { detectUserCurrency, SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { useTheme } from 'next-themes';
 
 interface SettingsFormsProps {
     user: {
@@ -31,6 +32,10 @@ export function SettingsForms({ user }: SettingsFormsProps) {
 
     const [isDeleting, setIsDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    const { theme, setTheme } = useTheme();
+
+    useEffect(() => setMounted(true), []);
 
     // Auto-detect currency on mount if user doesn't have one set
     useEffect(() => {
@@ -157,6 +162,38 @@ export function SettingsForms({ user }: SettingsFormsProps) {
                         </button>
                     </div>
                 </form>
+            </div>
+
+            {/* 🎨 Appearance Preferences */}
+            <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl p-6 shadow-sm space-y-5">
+                <div className="flex items-center gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-3">
+                    <Sun className="w-5 h-5 text-neutral-500" />
+                    <h2 className="text-base font-bold text-neutral-900 dark:text-white">
+                        Appearance
+                    </h2>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+                                Theme
+                            </p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                Switch between light and dark mode
+                            </p>
+                        </div>
+                        {mounted && (
+                            <button
+                                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                                className="p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                                aria-label="Toggle Theme"
+                            >
+                                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* 💰 Currency Preferences */}

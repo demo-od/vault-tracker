@@ -1,3 +1,4 @@
+
 import { sendEmail } from '@/lib/mail';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
