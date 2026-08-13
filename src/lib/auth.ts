@@ -29,6 +29,8 @@ export const auth = betterAuth({
             <h2>Welcome to Vault, ${user.name}!</h2>
             <p>Please verify your email address to activate your account:</p>
             <a href="${url}" style="display: inline-block; padding: 10px 20px; background-color: #fff; color: #000; text-decoration: none; font-weight: bold; border-radius: 5px;">Verify Email</a>
+            <p style="margin-top: 20px; font-size: 12px; color: #888;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; font-size: 12px; color: #aaa;">${url}</p>
           </div>
         `,
             });
