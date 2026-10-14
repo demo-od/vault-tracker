@@ -1,41 +1,47 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { getTransactions, getDashboardSummary, deleteTransaction } from '@/app/actions/transactions';
 import { AddTransactionModal } from '@/components/add-transaction-modal';
 import { Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { DeleteButton } from '@/components/delete-button';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { db } from '@/db';
-import { user } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { formatCurrency } from '@/lib/currency';
 
-export default async function DashboardPage() {
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
+export default function DashboardPage() {
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [summary, setSummary] = useState({ netBalance: 0, totalIncome: 0, totalExpenses: 0 });
+    const [loading, setLoading] = useState(true);
+    const [userCurrency, setUserCurrency] = useState('USD');
 
-    // Fetch user currency preference
-    let userCurrency = 'USD';
-    if (session) {
-        const users = await db
-            .select({
-                currency: user.currency,
-            })
-            .from(user)
-            .where(eq(user.id, session.user.id))
-            .limit(1);
-        userCurrency = users[0]?.currency || 'USD';
-    }
+    useEffect(() => {
+        async function loadData() {
+            const [txRes, summaryRes] = await Promise.all([
+                getTransactions(),
+                getDashboardSummary(),
+            ]);
 
-    const [txRes, summaryRes] = await Promise.all([
-        getTransactions(),
-        getDashboardSummary(),
-    ]);
+            if (txRes.success && txRes.data) {
+                setTransactions(txRes.data);
+            }
+            if (summaryRes.success && summaryRes.data) {
+                setSummary(summaryRes.data);
+            }
+            setLoading(false);
+        }
 
-    const transactionsList = txRes.success && txRes.data ? txRes.data : [];
-    const summary = summaryRes.success && summaryRes.data
-        ? summaryRes.data
-        : { netBalance: 0, totalIncome: 0, totalExpenses: 0 };
+        loadData();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        await deleteTransaction(id);
+        // Reload data
+        const [txRes, summaryRes] = await Promise.all([
+            getTransactions(),
+            getDashboardSummary(),
+        ]);
+        if (txRes.success && txRes.data) setTransactions(txRes.data);
+        if (summaryRes.success && summaryRes.data) setSummary(summaryRes.data);
+    };
 
     return (
         <div className="space-y-8">
@@ -53,39 +59,39 @@ export default async function DashboardPage() {
             </div>
 
             {/* Metric Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 shadow-sm space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
                     <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
-                        <span className="text-[11px] font-bold tracking-wider uppercase">
+                        <span className="text-[11px] sm:text-xs font-bold tracking-wider uppercase">
                             Net Balance
                         </span>
-                        <Wallet className="w-4 h-4 text-neutral-400" />
+                        <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
                     </div>
-                    <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+                    <p className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                         {formatCurrency(summary.netBalance, userCurrency)}
                     </p>
                 </div>
 
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-3">
                     <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
-                        <span className="text-[11px] font-bold tracking-wider uppercase">
+                        <span className="text-[11px] sm:text-xs font-bold tracking-wider uppercase">
                             Total Income
                         </span>
-                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                     </div>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         +{formatCurrency(summary.totalIncome, userCurrency)}
                     </p>
                 </div>
 
-                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 sm:p-5 shadow-sm space-y-3 sm:col-span-2 md:col-span-1">
                     <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400">
-                        <span className="text-[11px] font-bold tracking-wider uppercase">
+                        <span className="text-[11px] sm:text-xs font-bold tracking-wider uppercase">
                             Total Expenses
                         </span>
-                        <TrendingDown className="w-4 h-4 text-rose-500" />
+                        <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
                     </div>
-                    <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+                    <p className="text-xl sm:text-2xl font-bold text-rose-600 dark:text-rose-400">
                         -{formatCurrency(summary.totalExpenses, userCurrency)}
                     </p>
                 </div>
@@ -95,26 +101,30 @@ export default async function DashboardPage() {
 
             {/* Transactions List */}
             <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-neutral-200 dark:border-neutral-800">
+                <div className="p-3 sm:p-4 border-b border-neutral-200 dark:border-neutral-800">
                     <h2 className="text-sm font-semibold text-neutral-900 dark:text-white">
                         Recent Transactions
                     </h2>
                 </div>
 
-                {transactionsList.length === 0 ? (
+                {loading ? (
+                    <div className="p-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
+                        Loading...
+                    </div>
+                ) : transactions.length === 0 ? (
                     <div className="p-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
                         No transactions found. Click "Add Transaction" to create one!
                     </div>
                 ) : (
                     <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                        {transactionsList.map((tx) => {
+                        {transactions.map((tx) => {
                             const isExpense = Number(tx.amount) < 0;
                             return (
                                 <div
                                     key={tx.id}
-                                    className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors"
+                                    className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors"
                                 >
-                                    <div className="space-y-0.5">
+                                    <div className="space-y-0.5 flex-1">
                                         <p className="text-sm font-medium text-neutral-900 dark:text-white">
                                             {tx.payee}
                                         </p>
@@ -124,7 +134,7 @@ export default async function DashboardPage() {
                                         </p>
                                     </div>
 
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
                                         <span
                                             className={`text-sm font-semibold ${
                                                 isExpense
@@ -136,14 +146,10 @@ export default async function DashboardPage() {
                                             {formatCurrency(Math.abs(Number(tx.amount)), userCurrency)}
                                         </span>
 
-                                        <form
-                                            action={async () => {
-                                                'use server';
-                                                await deleteTransaction(tx.id);
-                                            }}
-                                        >
-                                            <DeleteButton title="Delete transaction" />
-                                        </form>
+                                        <DeleteButton 
+                                            title="Delete transaction" 
+                                            onClick={() => handleDelete(tx.id)}
+                                        />
                                     </div>
                                 </div>
                             );

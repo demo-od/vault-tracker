@@ -7,6 +7,7 @@ import {
 import { AnalyticsCharts } from '@/components/analytics-charts';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { db } from '@/db';
 import { user } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -16,25 +17,21 @@ export default async function AnalyticsPage() {
         headers: await headers(),
     });
 
-    // Fetch user currency preference
-    let userCurrency = 'USD';
-    if (session) {
-        const users = await db
-            .select({
-                currency: user.currency,
-            })
-            .from(user)
-            .where(eq(user.id, session.user.id))
-            .limit(1);
-        userCurrency = users[0]?.currency || 'USD';
+    if (!session) {
+        redirect('/login');
     }
 
-    const [summaryRes, breakdownRes, monthlyRes, txRes] = await Promise.all([
-        getDashboardSummary(),
+    const [summaryRes, breakdownRes, monthlyRes, txRes, users] = await Promise.all([
+        getDashboardSummary(session.user.id),
         getCategoryBreakdown(),
         getMonthlyAnalytics(),
-        getTransactions(),
+        getTransactions(session.user.id),
+        db.select({
+            currency: user.currency,
+        }).from(user).where(eq(user.id, session.user.id)).limit(1),
     ]);
+
+    const userCurrency = users[0]?.currency || 'USD';
 
     const summary =
         summaryRes.success && summaryRes.data

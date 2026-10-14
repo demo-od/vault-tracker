@@ -54,8 +54,14 @@ export default function LoginPage() {
                 if (signInError) {
                     setError(signInError.message || 'Invalid email or password');
                 } else if (data) {
-                    router.push('/dashboard');
-                    router.refresh();
+                    // Store user data in localStorage for sidebar
+                    if (data.user) {
+                        localStorage.setItem('user', JSON.stringify({
+                            name: data.user.name,
+                            email: data.user.email,
+                        }));
+                    }
+                    window.location.href = '/dashboard';
                 }
             }
         } catch (err: any) {

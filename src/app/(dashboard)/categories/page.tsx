@@ -1,11 +1,34 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { getCategories } from '@/app/actions/transactions';
 import { createCategory, deleteCategory } from '@/app/actions/categories';
 import { SubmitButton } from '@/components/submit-button';
 import { DeleteButton } from '@/components/delete-button';
 
-export default async function CategoriesPage() {
-    const res = await getCategories();
-    const categoryList = res.success && res.data ? res.data : [];
+export default function CategoriesPage() {
+    const [categories, setCategories] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadData() {
+            const res = await getCategories();
+            if (res.success && res.data) {
+                setCategories(res.data);
+            }
+            setLoading(false);
+        }
+
+        loadData();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        await deleteCategory(id);
+        const res = await getCategories();
+        if (res.success && res.data) {
+            setCategories(res.data);
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -72,13 +95,17 @@ export default async function CategoriesPage() {
                     </h2>
                 </div>
 
-                {categoryList.length === 0 ? (
+                {loading ? (
+                    <div className="p-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
+                        Loading...
+                    </div>
+                ) : categories.length === 0 ? (
                     <div className="p-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
                         No custom categories created yet.
                     </div>
                 ) : (
                     <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                        {categoryList.map((cat) => (
+                        {categories.map((cat) => (
                             <div
                                 key={cat.id}
                                 className="p-4 flex items-center justify-between hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-colors"
@@ -93,14 +120,10 @@ export default async function CategoriesPage() {
                                     </span>
                                 </div>
 
-                                <form
-                                    action={async () => {
-                                        'use server';
-                                        await deleteCategory(cat.id);
-                                    }}
-                                >
-                                    <DeleteButton title="Delete category" />
-                                </form>
+                                <DeleteButton 
+                                    title="Delete category" 
+                                    onClick={() => handleDelete(cat.id)}
+                                />
                             </div>
                         ))}
                     </div>

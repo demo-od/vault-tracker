@@ -1,19 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Tags, BarChart3, Receipt, LogOut, Settings, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Tags, BarChart3, Receipt, LogOut, Settings, Menu, X, Loader2 } from 'lucide-react';
 import { signOutAction } from '@/app/actions/sign-out';
 
 interface SidebarProps {
-    user: {
+    user?: {
         name: string;
         email: string;
     };
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user: initialUser }: SidebarProps) {
+    const [user, setUser] = useState(initialUser || { name: 'Vault', email: '' });
+
+    useEffect(() => {
+        if (!initialUser) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                try {
+                    setUser(JSON.parse(storedUser));
+                } catch (e) {
+                    console.error('Failed to parse stored user:', e);
+                }
+            }
+        }
+    }, [initialUser]);
+
+    const [signingOut, setSigningOut] = useState(false);
+
+    const handleSignOut = async () => {
+        setSigningOut(true);
+        try {
+            localStorage.removeItem('user');
+            await signOutAction();
+        } finally {
+            setSigningOut(false);
+        }
+    };
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -31,14 +57,14 @@ export function Sidebar({ user }: SidebarProps) {
     return (
         <>
             {/* Mobile Header */}
-            <header className="md:hidden w-full h-16 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-4 flex items-center justify-between sticky top-0 z-50 transition-colors">
+            <header className="lg:hidden w-full h-16 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-4 flex items-center justify-between sticky top-0 z-50 transition-colors">
                 <div className="flex items-center gap-2">
                     <div className="h-8 w-8 bg-black dark:bg-white text-white dark:text-black rounded-lg flex items-center justify-center font-bold text-sm">
                         V
                     </div>
                     <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">Vault</span>
                 </div>
-                
+
                 <button
                     onClick={toggleMenu}
                     className="p-2 text-neutral-500 hover:text-black dark:hover:text-white rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 transition-colors cursor-pointer"
@@ -50,7 +76,7 @@ export function Sidebar({ user }: SidebarProps) {
 
             {/* Mobile Expanded Menu overlay */}
             {isOpen && (
-                <div className="md:hidden fixed inset-x-0 top-16 bottom-0 bg-neutral-50 dark:bg-black z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-top-4 duration-200">
+                <div className="lg:hidden fixed inset-x-0 top-16 bottom-0 bg-neutral-50 dark:bg-black z-40 p-6 flex flex-col justify-between overflow-y-auto animate-in fade-in slide-in-from-top-4 duration-200">
                     <div className="space-y-6">
                         <nav className="space-y-2">
                             {links.map((link) => {
@@ -84,21 +110,24 @@ export function Sidebar({ user }: SidebarProps) {
                                 {user.email}
                             </p>
                         </div>
-                        <form action={signOutAction}>
-                            <button
-                                type="submit"
-                                className="p-2.5 text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900"
-                                title="Sign Out"
-                            >
+                        <button
+                            onClick={handleSignOut}
+                            disabled={signingOut}
+                            className="p-2.5 text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Sign Out"
+                        >
+                            {signingOut ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
                                 <LogOut className="w-5 h-5" />
-                            </button>
-                        </form>
+                            )}
+                        </button>
                     </div>
                 </div>
             )}
 
             {/* Desktop Sidebar (Permanent) */}
-            <aside className="hidden md:flex w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 flex-col justify-between h-screen sticky top-0 transition-colors">
+            <aside className="hidden lg:flex w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 flex-col justify-between h-screen sticky top-0 transition-colors">
                 <div className="space-y-8">
                     <div className="flex items-center gap-2">
                         <div className="h-8 w-8 bg-black dark:bg-white text-white dark:text-black rounded-lg flex items-center justify-center font-bold text-sm">
@@ -138,15 +167,18 @@ export function Sidebar({ user }: SidebarProps) {
                             {user.email}
                         </p>
                     </div>
-                    <form action={signOutAction}>
-                        <button
-                            type="submit"
-                            className="p-2 text-neutral-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                            title="Sign Out"
-                        >
+                    <button
+                        onClick={handleSignOut}
+                        disabled={signingOut}
+                        className="p-2 text-neutral-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Sign Out"
+                    >
+                        {signingOut ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
                             <LogOut className="w-4 h-4" />
-                        </button>
-                    </form>
+                        )}
+                    </button>
                 </div>
             </aside>
         </>

@@ -77,7 +77,7 @@ export function AddTransactionModal({ currency = 'USD' }: AddTransactionModalPro
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black font-medium text-sm rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-3 lg:py-2 bg-black dark:bg-white text-white dark:text-black font-medium text-sm rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors cursor-pointer"
             >
                 <Plus className="w-4 h-4" />
                 Add Transaction

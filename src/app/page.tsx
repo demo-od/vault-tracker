@@ -14,18 +14,6 @@ export default function LandingPage() {
                 </div>
                 <div className="flex gap-4 items-center">
                     <ThemeToggle />
-                    <Link
-                        href="/login"
-                        className="text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
-                    >
-                        Sign In
-                    </Link>
-                    <Link
-                        href="/login"
-                        className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-semibold rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors"
-                    >
-                        Get Started
-                    </Link>
                 </div>
             </header>
 

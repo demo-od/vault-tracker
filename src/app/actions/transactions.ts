@@ -7,6 +7,14 @@ import { headers } from 'next/headers';
 import { eq, desc, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
+// Helper to get current user ID
+async function getCurrentUserId() {
+    const session = await auth.api.getSession({
+        headers: await headers(),
+    });
+    return session?.user.id;
+}
+
 export type CreateTransactionInput = {
     categoryId?: string;
     amount: string;
@@ -22,11 +30,9 @@ export type CreateTransactionInput = {
  */
 export async function getDashboardSummary() {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -35,7 +41,7 @@ export async function getDashboardSummary() {
                 amount: transactions.amount,
             })
             .from(transactions)
-            .where(eq(transactions.userId, session.user.id));
+            .where(eq(transactions.userId, userId));
 
         let totalIncome = 0;
         let totalExpenses = 0;
@@ -70,11 +76,9 @@ export async function getDashboardSummary() {
  */
 export async function getTransactions() {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -91,7 +95,7 @@ export async function getTransactions() {
             })
             .from(transactions)
             .leftJoin(categories, eq(transactions.categoryId, categories.id))
-            .where(eq(transactions.userId, session.user.id))
+            .where(eq(transactions.userId, userId))
             .orderBy(desc(transactions.date));
 
         return { success: true, data };
@@ -106,11 +110,9 @@ export async function getTransactions() {
  */
 export async function getCategoryBreakdown() {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -123,7 +125,7 @@ export async function getCategoryBreakdown() {
             })
             .from(transactions)
             .leftJoin(categories, eq(transactions.categoryId, categories.id))
-            .where(eq(transactions.userId, session.user.id));
+            .where(eq(transactions.userId, userId));
 
         const categoryMap: Record<string, { name: string; total: number; color: string }> = {};
         let totalExpenseSum = 0;
@@ -165,20 +167,18 @@ export async function getCategoryBreakdown() {
 /**
  * Fetch categories for the current user
  */
-export async function getCategories() {
+export async function getCategories(userId?: string) {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const id = userId || await getCurrentUserId();
 
-        if (!session) {
+        if (!id) {
             return { success: false, error: 'Unauthorized' };
         }
 
         const data = await db
             .select()
             .from(categories)
-            .where(eq(categories.userId, session.user.id));
+            .where(eq(categories.userId, id));
 
         return { success: true, data };
     } catch (error) {
@@ -192,18 +192,16 @@ export async function getCategories() {
  */
 export async function createTransaction(input: CreateTransactionInput) {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
         const [newTransaction] = await db
             .insert(transactions)
             .values({
-                userId: session.user.id,
+                userId,
                 categoryId: input.categoryId || null,
                 amount: input.amount,
                 payee: input.payee,
@@ -226,11 +224,9 @@ export async function createTransaction(input: CreateTransactionInput) {
  */
 export async function deleteTransaction(id: string) {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -239,7 +235,7 @@ export async function deleteTransaction(id: string) {
             .where(
                 and(
                     eq(transactions.id, id),
-                    eq(transactions.userId, session.user.id)
+                    eq(transactions.userId, userId)
                 )
             );
 
@@ -259,11 +255,9 @@ export async function deleteTransaction(id: string) {
  */
 export async function getMonthlyAnalytics() {
     try {
-        const session = await auth.api.getSession({
-            headers: await headers(),
-        });
+        const userId = await getCurrentUserId();
 
-        if (!session) {
+        if (!userId) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -273,7 +267,7 @@ export async function getMonthlyAnalytics() {
                 date: transactions.date,
             })
             .from(transactions)
-            .where(eq(transactions.userId, session.user.id));
+            .where(eq(transactions.userId, userId));
 
         const monthlyMap: Record<string, { month: string; income: number; expense: number }> = {};
 

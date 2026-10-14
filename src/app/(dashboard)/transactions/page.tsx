@@ -1,60 +1,91 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { getCategories, getTransactions, deleteTransaction } from '@/app/actions/transactions';
 import { AddTransactionModal } from '@/components/add-transaction-modal';
 import { DeleteButton } from '@/components/delete-button';
 import { TransactionsFilter } from '@/components/transactions-filter';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { db } from '@/db';
-import { user } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { formatCurrency } from '@/lib/currency';
 
-export default async function TransactionsPage({
-                                                   searchParams,
-                                               }: {
+export default function TransactionsPage({
+    searchParams,
+}: {
     searchParams: Promise<{ q?: string; category?: string }>;
 }) {
-    const params = await searchParams;
-    const query = params.q?.toLowerCase() || '';
-    const selectedCategory = params.category || 'all';
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [userCurrency, setUserCurrency] = useState('USD');
 
-    const session = await auth.api.getSession({
-        headers: await headers(),
-    });
+    useEffect(() => {
+        async function loadData() {
+            const params = await searchParams;
+            const query = params.q?.toLowerCase() || '';
+            const selectedCategory = params.category || 'all';
 
-    // Fetch user currency preference
-    let userCurrency = 'USD';
-    if (session) {
-        const users = await db
-            .select({
-                currency: user.currency,
-            })
-            .from(user)
-            .where(eq(user.id, session.user.id))
-            .limit(1);
-        userCurrency = users[0]?.currency || 'USD';
-    }
+            const [txRes, catRes] = await Promise.all([
+                getTransactions(),
+                getCategories(),
+            ]);
 
-    const [txRes, catRes] = await Promise.all([
-        getTransactions(),
-        getCategories(),
-    ]);
+            if (txRes.success && txRes.data) {
+                const rawTransactions = txRes.data;
+                const filteredTransactions = rawTransactions.filter((tx: any) => {
+                    const matchesQuery =
+                        !query ||
+                        tx.payee.toLowerCase().includes(query) ||
+                        (tx.notes && tx.notes.toLowerCase().includes(query));
 
-    const rawTransactions = txRes.success && txRes.data ? txRes.data : [];
-    const categoriesList = catRes.success && catRes.data ? catRes.data : [];
+                    const matchesCategory =
+                        selectedCategory === 'all' || tx.categoryId === selectedCategory;
 
-    // Filter transactions server-side or in-memory
-    const filteredTransactions = rawTransactions.filter((tx) => {
-        const matchesQuery =
-            !query ||
-            tx.payee.toLowerCase().includes(query) ||
-            (tx.notes && tx.notes.toLowerCase().includes(query));
+                    return matchesQuery && matchesCategory;
+                });
+                setTransactions(filteredTransactions);
+            }
 
-        const matchesCategory =
-            selectedCategory === 'all' || tx.categoryId === selectedCategory;
+            if (catRes.success && catRes.data) {
+                setCategories(catRes.data);
+            }
 
-        return matchesQuery && matchesCategory;
-    });
+            setLoading(false);
+        }
+
+        loadData();
+    }, [searchParams]);
+
+    const handleDelete = async (id: string) => {
+        await deleteTransaction(id);
+        // Reload data
+        const params = await searchParams;
+        const query = params.q?.toLowerCase() || '';
+        const selectedCategory = params.category || 'all';
+
+        const [txRes, catRes] = await Promise.all([
+            getTransactions(),
+            getCategories(),
+        ]);
+
+        if (txRes.success && txRes.data) {
+            const rawTransactions = txRes.data;
+            const filteredTransactions = rawTransactions.filter((tx: any) => {
+                const matchesQuery =
+                    !query ||
+                    tx.payee.toLowerCase().includes(query) ||
+                    (tx.notes && tx.notes.toLowerCase().includes(query));
+
+                const matchesCategory =
+                    selectedCategory === 'all' || tx.categoryId === selectedCategory;
+
+                return matchesQuery && matchesCategory;
+            });
+            setTransactions(filteredTransactions);
+        }
+
+        if (catRes.success && catRes.data) {
+            setCategories(catRes.data);
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -73,25 +104,29 @@ export default async function TransactionsPage({
 
             {/* Filter Bar */}
             <TransactionsFilter
-                categories={categoriesList}
-                transactions={filteredTransactions}
+                categories={categories}
+                transactions={transactions}
             />
 
             {/* Transactions Master Table */}
             <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center text-xs text-neutral-500">
                     <span className="font-semibold text-neutral-900 dark:text-white">
-                        All Records ({filteredTransactions.length})
+                        All Records ({transactions.length})
                     </span>
                 </div>
 
-                {filteredTransactions.length === 0 ? (
+                {loading ? (
+                    <div className="p-12 text-center text-xs text-neutral-500 dark:text-neutral-400">
+                        Loading...
+                    </div>
+                ) : transactions.length === 0 ? (
                     <div className="p-12 text-center text-xs text-neutral-500 dark:text-neutral-400">
                         No transactions found matching your filter criteria.
                     </div>
                 ) : (
                     <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                        {filteredTransactions.map((tx) => {
+                        {transactions.map((tx) => {
                             const isExpense = Number(tx.amount) < 0;
                             return (
                                 <div
@@ -125,14 +160,10 @@ export default async function TransactionsPage({
                                             {formatCurrency(Math.abs(Number(tx.amount)), userCurrency)}
                                         </span>
 
-                                        <form
-                                            action={async () => {
-                                                'use server';
-                                                await deleteTransaction(tx.id);
-                                            }}
-                                        >
-                                            <DeleteButton title="Delete transaction" />
-                                        </form>
+                                        <DeleteButton 
+                                            title="Delete transaction" 
+                                            onClick={() => handleDelete(tx.id)}
+                                        />
                                     </div>
                                 </div>
                             );
